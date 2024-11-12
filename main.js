@@ -1,63 +1,33 @@
-const fs = require('fs');
-const readline = require('readline-sync');
-
-
-const { encryptData, decryptData, deriveKey, loadPasswords, savePasswords } = require('./passwordManager.js');
-// Constants
-
+const Keychain = require('./passwordManager');
 
 async function main() {
-    console.log('--- Welcome to the Password Manager ---');
-    
-    const masterPassword = readline.question('Enter your master password: ', { hideEchoBack: true });
-  
-    // Generate or retrieve the encryption key
-    const salt = 'fixed-salt-for-demo'; // Use a unique salt per user in a real implementation
-    const key = await deriveKey(masterPassword, salt);
-  
-    let passwords = loadPasswords();
-  
-    while (true) {
-      console.log('\nOptions:');
-      console.log('1. Add a new password');
-      console.log('2. Retrieve a password');
-      console.log('3. Exit');
-      const choice = readline.question('Choose an option: ');
-  
-      if (choice === '1') {
-        const account = readline.question('Enter account name: ');
-        const password = readline.question('Enter password: ', { hideEchoBack: true });
-  
-        // Encrypt the password
-        const { ciphertext, iv } = await encryptData(password, key);
-        passwords[account] = { ciphertext, iv };
-        savePasswords(passwords);
-        console.log('Password saved successfully!');
-  
-      } else if (choice === '2') {
-        const account = readline.question('Enter account name to retrieve: ');
-  
-        if (!passwords[account]) {
-          console.log('Account not found!');
-          continue;
-        }
-  
-        const { ciphertext, iv } = passwords[account];
-        try {
-          const decryptedPassword = await decryptData(ciphertext, iv, key);
-          console.log(`Password for ${account}: ${decryptedPassword}`);
-        } catch (err) {
-          console.log('Failed to decrypt password. Incorrect master password?');
-        }
-  
-      } else if (choice === '3') {
-        console.log('Exiting...');
-        break;
-      } else {
-        console.log('Invalid option. Try again.');
-      }
+    try {
+        console.log("\n--- Initializing Password Manager ---");
+        const masterPassword = 'SuperSecret123!';
+        const keychain = await Keychain.init(masterPassword);
+
+        console.log("\n--- Storing Passwords ---");
+        await keychain.set("google.com", "GooglePass123");
+        await keychain.set("github.com", "GitHubKey789");
+
+        console.log("\n--- Retrieving Passwords ---");
+        console.log("Password for google.com:", await keychain.get("google.com"));
+        console.log("Password for github.com:", await keychain.get("github.com"));
+
+        console.log("\n--- Dumping Keychain ---");
+        const [serialized, hash] = await keychain.dump();
+        console.log("Serialized:", serialized);
+        console.log("Hash:", hash);
+
+        console.log("\n--- Reloading Keychain ---");
+        const loadedKeychain = await Keychain.load(masterPassword, serialized, hash);
+
+        console.log("\n--- Verifying Reloaded Passwords ---");
+        console.log("Reloaded password for google.com:", await loadedKeychain.get("google.com"));
+        console.log("Reloaded password for github.com:", await loadedKeychain.get("github.com"));
+    } catch (err) {
+        console.error("Error:", err);
     }
-  }
-  
-  main().catch(console.error);
-  
+}
+
+main();
