@@ -12,6 +12,7 @@
   "dependencies": {
     "expect": "^29.7.0",
     "mocha": "^10.8.2",
+    "mysql": "^2.18.1",
     "readline-sync": "^1.4.10"
   }
 }
